@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Parcial 2 – Vistas (Drag & Drop)</title>
+  <title>Parcial 2 – Vistas (Selección por pieza)</title>
   <style>
     :root{ --ink:#0f172a; --muted:#64748b; --bg:#f1f5f9; --card:#fff; --line:#e2e8f0; }
     *{ box-sizing:border-box; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; }
@@ -13,32 +13,48 @@
     h1{ margin:0 0 6px; font-size:18px; }
     p{ margin:0; color:var(--muted); font-size:13px; line-height:1.35; }
 
-    /* Piezas arriba */
-    .piecesTop{ display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-top:10px; }
-    @media (max-width: 900px){ .piecesTop{ grid-template-columns:repeat(3,1fr); } }
+    /* Pieza actual */
+    .pieceStage{
+      display:grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap:12px;
+      margin-top:10px;
+      align-items:center;
+    }
+    .pieceStage .pieceCard{ margin:0; }
+    .pieceMeta{
+      display:grid;
+      gap:8px;
+      align-content:start;
+    }
+    .pieceTitle{
+      font-size:14px;
+      font-weight:900;
+      color:#334155;
+    }
+    .pieceNav{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .pieceNav .step{
+      font-weight:900;
+      color:var(--muted);
+      font-size:12px;
+    }
+    @media (max-width: 900px){
+      .pieceStage{ grid-template-columns:1fr; }
+    }
     @media (max-width: 600px){
       .wrap{ margin:12px auto; padding:0 10px; gap:10px; }
       .card{ padding:12px; border-radius:12px; }
-      .piecesTop{ grid-template-columns:repeat(2,1fr); gap:8px; }
       .pieceCard{ padding:8px; border-radius:12px; }
       .pieceCard img{ height:110px; }
     }
     .pieceCard{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:10px; text-align:center; }
     .pieceCard img{ width:100%; height:140px; object-fit:contain; display:block; }
     .pieceCard .lbl{ margin-top:6px; color:var(--muted); font-weight:900; font-size:12px; }
-
-    /* Tabla */
-    table{ width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border-radius:12px; border:1px solid var(--line); background:#fff; }
-    th, td{ border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:10px; text-align:center; vertical-align:middle; }
-    th:first-child, td:first-child{ text-align:left; width:150px; }
-    tr:last-child td{ border-bottom:0; }
-    th:last-child, td:last-child{ border-right:0; }
-    thead th{ background:#f8fafc; color:var(--muted); font-size:12px; font-weight:900; }
-    @media (max-width: 600px){
-      table{ font-size:12px; }
-      th, td{ padding:6px; }
-      th:first-child, td:first-child{ width:90px; }
-    }
 
     .dropzone{
       min-height:88px;
@@ -116,6 +132,34 @@
       .tile .n{ font-size:13px; }
     }
 
+    /* Slots por pieza */
+    .slots{
+      display:grid;
+      gap:10px;
+      grid-template-columns: repeat(3, minmax(160px, 1fr));
+      margin-top:10px;
+    }
+    .slotCard{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px;
+      background:#fff;
+      display:grid;
+      gap:8px;
+    }
+    .slotLabel{
+      font-weight:900;
+      font-size:12px;
+      color:#334155;
+      letter-spacing:.02em;
+    }
+    @media (max-width: 900px){
+      .slots{ grid-template-columns:1fr; }
+    }
+    @media (max-width: 600px){
+      .slotCard{ padding:8px; }
+    }
+
     /* Overlay inicio */
     .overlay{
       position:fixed; inset:0; z-index:9999;
@@ -183,52 +227,30 @@
   <div class="wrap">
 
     <div class="card">
-      <h1>Parcial 2 – Vistas (Drag & Drop)</h1>
-      <p>Arrastra las vistas (1–18) desde abajo a la tabla. Las piezas se muestran arriba como referencia.</p>
+      <h1>Parcial 2 – Vistas (Selección por pieza)</h1>
+      <p>Para cada pieza, elige sus tres vistas: frontal, superior y lateral izquierda. Las vistas elegidas ya no volverán a aparecer.</p>
 
-      <div class="piecesTop" id="piecesTop"></div>
+      <div class="pieceStage">
+        <div class="pieceCard" id="pieceCard">
+          <img id="pieceImg" src="" alt="Pieza actual">
+          <div class="lbl" id="pieceLbl">Pieza 1</div>
+        </div>
+        <div class="pieceMeta">
+          <div class="pieceTitle" id="pieceTitle">Selecciona vistas para Pieza 1</div>
+          <div class="pieceNav">
+            <button id="btnPrevPiece" disabled>Pieza anterior</button>
+            <button id="btnNextPiece">Siguiente pieza</button>
+            <div class="step" id="pieceStep">Pieza 1/6</div>
+          </div>
+          <div class="hint">En móvil: toca una vista y luego un slot.</div>
+        </div>
+      </div>
       <div class="hint">Carpeta requerida: <b>img/piezas/pieza1.png</b> ... <b>img/piezas/pieza6.png</b></div>
     </div>
 
     <div class="card">
-      <table>
-        <thead>
-          <tr>
-            <th>Vista \ Pieza</th>
-            <th>Pieza 1</th><th>Pieza 2</th><th>Pieza 3</th><th>Pieza 4</th><th>Pieza 5</th><th>Pieza 6</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><b>FRONTAL</b></td>
-            <td><div class="dropzone" data-r="0" data-c="0"><button class="btnX" title="Quitar">×</button></div></td>
-            <td><div class="dropzone" data-r="0" data-c="1"><button class="btnX" title="Quitar">×</button></div></td>
-            <td><div class="dropzone" data-r="0" data-c="2"><button class="btnX" title="Quitar">×</button></div></td>
-            <td><div class="dropzone" data-r="0" data-c="3"><button class="btnX" title="Quitar">×</button></div></td>
-            <td><div class="dropzone" data-r="0" data-c="4"><button class="btnX" title="Quitar">×</button></div></td>
-            <td><div class="dropzone" data-r="0" data-c="5"><button class="btnX" title="Quitar">×</button></div></td>
-          </tr>
-          <tr>
-            <td><b>SUPERIOR</b></td>
-            <td><div class="dropzone" data-r="1" data-c="0"><button class="btnX" title="Quitar">×</button></div></td>
-            <td><div class="dropzone" data-r="1" data-c="1"><button class="btnX" title="Quitar">×</button></div></td>
-            <td><div class="dropzone" data-r="1" data-c="2"><button class="btnX" title="Quitar">×</button></div></td>
-            <td><div class="dropzone" data-r="1" data-c="3"><button class="btnX" title="Quitar">×</button></div></td>
-            <td><div class="dropzone" data-r="1" data-c="4"><button class="btnX" title="Quitar">×</button></div></td>
-            <td><div class="dropzone" data-r="1" data-c="5"><button class="btnX" title="Quitar">×</button></div></td>
-          </tr>
-          <tr>
-            <td><b>LAT. IZQ</b></td>
-            <td><div class="dropzone" data-r="2" data-c="0"><button class="btnX" title="Quitar">×</button></div></td>
-            <td><div class="dropzone" data-r="2" data-c="1"><button class="btnX" title="Quitar">×</button></div></td>
-            <td><div class="dropzone" data-r="2" data-c="2"><button class="btnX" title="Quitar">×</button></div></td>
-            <td><div class="dropzone" data-r="2" data-c="3"><button class="btnX" title="Quitar">×</button></div></td>
-            <td><div class="dropzone" data-r="2" data-c="4"><button class="btnX" title="Quitar">×</button></div></td>
-            <td><div class="dropzone" data-r="2" data-c="5"><button class="btnX" title="Quitar">×</button></div></td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="hint">Puedes quitar una vista de una celda con “×” y regresarla al banco.</div>
+      <div class="slots" id="slots"></div>
+      <div class="hint">Completa FRONTAL, SUPERIOR y LATERAL IZQ para continuar.</div>
     </div>
 
     <div class="card">
@@ -312,7 +334,7 @@
       return a;
     }
     function placedCount(){
-      return document.querySelectorAll(".dropzone[data-filled='1']").length;
+      return Object.keys(cellState).length;
     }
     function refreshStatus(){
       const selected = selectedViewId ? ` • Seleccionada: #${selectedViewId}` : "";
@@ -358,15 +380,23 @@
     });
 
     // =========================
-    // Render piezas arriba
+    // UI por pieza (wizard)
     // =========================
-    const piecesTop = document.getElementById("piecesTop");
-    piecesTop.innerHTML = PIEZAS.map(p => `
-      <div class="pieceCard">
-        <img src="${p.src}" alt="Pieza ${p.id}" onerror="this.style.border='2px solid red'">
-        <div class="lbl">Pieza ${p.id}</div>
-      </div>
-    `).join("");
+    const pieceImg = document.getElementById("pieceImg");
+    const pieceLbl = document.getElementById("pieceLbl");
+    const pieceTitle = document.getElementById("pieceTitle");
+    const pieceStep = document.getElementById("pieceStep");
+    const btnPrevPiece = document.getElementById("btnPrevPiece");
+    const btnNextPiece = document.getElementById("btnNextPiece");
+    const slots = document.getElementById("slots");
+
+    const ROWS = [
+      { r:0, label:"FRONTAL" },
+      { r:1, label:"SUPERIOR" },
+      { r:2, label:"LATERAL IZQ" }
+    ];
+
+    let currentPiece = 1;
 
     // =========================
     // Render banco abajo
@@ -400,11 +430,13 @@
       }
     }
 
-    // =========================
-    // Dropzones
-    // =========================
     const cellState = {}; // {"0-0":"7", ...}
-    const zones = Array.from(document.querySelectorAll(".dropzone"));
+    const bankOrder = shuffle(VIEWS);
+
+    function getRemainingViews(){
+      const used = new Set(Object.values(cellState));
+      return bankOrder.filter(v=>!used.has(v.id));
+    }
 
     function setSelected(viewId){
       selectedViewId = viewId;
@@ -424,9 +456,6 @@
         return;
       }
 
-      // Si la celda ya tiene algo, lo regresamos
-      if(zone.dataset.filled === "1") clearZone(zone);
-
       // Evitar duplicados
       if(Object.values(cellState).includes(viewId)){
         alert(`La vista ${viewId} ya está colocada en otra casilla.`);
@@ -436,23 +465,11 @@
       const v = VIEWS.find(x=>x.id===viewId);
       if(!v) return;
 
-      // Quita del banco
-      const tile = bank.querySelector(`.tile[data-view-id="${CSS.escape(viewId)}"]`);
-      if(tile) tile.remove();
-
-      // Coloca mini en celda
-      const mini = document.createElement("div");
-      mini.className = "mini";
-      mini.innerHTML = `<img src="${v.src}" alt="${v.label}"><div class="cap">#${v.id}</div>`;
-      zone.appendChild(mini);
-
       const key = `${zone.dataset.r}-${zone.dataset.c}`;
       cellState[key] = viewId;
-      zone.dataset.filled = "1";
-      refreshStatus();
-
-      // Limpia selección si era el mismo
-      if(selectedViewId === viewId) setSelected(null);
+      renderPiece();
+      renderBank(getRemainingViews());
+      setSelected(null);
     }
 
     function clearZone(zone){
@@ -460,40 +477,14 @@
       const viewId = cellState[key];
       if(!viewId) return;
 
-      // Regresa al banco al inicio
-      const v = VIEWS.find(x=>x.id===viewId);
-      if(v){
-        const tile = document.createElement("div");
-        tile.className = "tile";
-        tile.draggable = true;
-        tile.dataset.viewId = v.id;
-        tile.innerHTML = `<div class="n">${v.id}</div><img src="${v.src}" alt="${v.label}">`;
-        tile.addEventListener("dragstart", (e)=>{
-          e.dataTransfer.setData("text/plain", v.id);
-          e.dataTransfer.effectAllowed = "move";
-        });
-        tile.addEventListener("click", ()=>{
-          if(EXAM_LOCK.sent) return;
-          if(selectedViewId === v.id){
-            setSelected(null);
-          }else{
-            setSelected(v.id);
-          }
-        });
-        if(selectedViewId === v.id){
-          tile.classList.add("selected");
-        }
-        bank.prepend(tile);
-      }
-
       delete cellState[key];
-      zone.dataset.filled = "0";
-      zone.querySelectorAll(".mini").forEach(x=>x.remove());
-      refreshStatus();
+      renderPiece();
+      renderBank(getRemainingViews());
+      setSelected(null);
     }
 
-    zones.forEach(zone=>{
-      zone.dataset.filled = "0";
+    function wireZone(zone){
+      zone.dataset.filled = zone.dataset.filled || "0";
 
       zone.addEventListener("dragover", (e)=>{
         e.preventDefault();
@@ -528,6 +519,61 @@
         }
         clearZone(zone);
       });
+    }
+
+    function isPieceComplete(pieceId){
+      const c = pieceId - 1;
+      return ROWS.every(row => cellState[`${row.r}-${c}`]);
+    }
+
+    function renderPiece(){
+      const p = PIEZAS[currentPiece - 1];
+      pieceImg.src = p.src;
+      pieceImg.alt = `Pieza ${p.id}`;
+      pieceLbl.textContent = `Pieza ${p.id}`;
+      pieceTitle.textContent = `Selecciona vistas para Pieza ${p.id}`;
+      pieceStep.textContent = `Pieza ${p.id}/6`;
+      btnPrevPiece.disabled = currentPiece === 1;
+      btnNextPiece.disabled = currentPiece === 6;
+
+      const c = currentPiece - 1;
+      slots.innerHTML = ROWS.map(row => {
+        const key = `${row.r}-${c}`;
+        const viewId = cellState[key];
+        const v = viewId ? VIEWS.find(x=>x.id===viewId) : null;
+        return `
+          <div class="slotCard">
+            <div class="slotLabel">${row.label}</div>
+            <div class="dropzone" data-r="${row.r}" data-c="${c}" data-filled="${viewId ? "1":"0"}">
+              <button class="btnX" title="Quitar">×</button>
+              ${v ? `<div class="mini"><img src="${v.src}" alt="${v.label}"><div class="cap">#${v.id}</div></div>` : ""}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      slots.querySelectorAll(".dropzone").forEach(wireZone);
+      refreshStatus();
+    }
+
+    btnPrevPiece.addEventListener("click", ()=>{
+      if(currentPiece > 1){
+        currentPiece -= 1;
+        setSelected(null);
+        renderPiece();
+      }
+    });
+
+    btnNextPiece.addEventListener("click", ()=>{
+      if(!isPieceComplete(currentPiece)){
+        alert("Completa FRONTAL, SUPERIOR y LATERAL IZQ para continuar.");
+        return;
+      }
+      if(currentPiece < 6){
+        currentPiece += 1;
+        setSelected(null);
+        renderPiece();
+      }
     });
 
     // =========================
@@ -595,7 +641,8 @@
     });
 
     // INIT
-    renderBank(shuffle(VIEWS));
+    renderPiece();
+    renderBank(getRemainingViews());
     refreshStatus();
   </script>
 </body>
