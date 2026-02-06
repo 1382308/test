@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Parcial 2 – Vistas (Drag & Drop)</title>
+  <style>
+    :root{ --ink:#0f172a; --muted:#64748b; --bg:#f1f5f9; --card:#fff; --line:#e2e8f0; }
+    *{ box-sizing:border-box; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+    body{ margin:0; background:var(--bg); color:var(--ink); }
+    .wrap{ max-width:1200px; margin:18px auto; padding:0 14px; display:grid; gap:12px; }
+    .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; box-shadow:0 10px 25px rgba(2,6,23,.06); }
+    h1{ margin:0 0 6px; font-size:18px; }
+    p{ margin:0; color:var(--muted); font-size:13px; line-height:1.35; }
+
+    /* Piezas arriba */
+    .piecesTop{ display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-top:10px; }
+    @media (max-width: 900px){ .piecesTop{ grid-template-columns:repeat(3,1fr); } }
+    @media (max-width: 600px){
+      .wrap{ margin:12px auto; padding:0 10px; gap:10px; }
+      .card{ padding:12px; border-radius:12px; }
+      .piecesTop{ grid-template-columns:repeat(2,1fr); gap:8px; }
+      .pieceCard{ padding:8px; border-radius:12px; }
+      .pieceCard img{ height:110px; }
+    }
+    .pieceCard{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:10px; text-align:center; }
+    .pieceCard img{ width:100%; height:140px; object-fit:contain; display:block; }
+    .pieceCard .lbl{ margin-top:6px; color:var(--muted); font-weight:900; font-size:12px; }
+
+    /* Tabla */
+    table{ width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border-radius:12px; border:1px solid var(--line); background:#fff; }
+    th, td{ border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:10px; text-align:center; vertical-align:middle; }
+    th:first-child, td:first-child{ text-align:left; width:150px; }
+    tr:last-child td{ border-bottom:0; }
+    th:last-child, td:last-child{ border-right:0; }
+    thead th{ background:#f8fafc; color:var(--muted); font-size:12px; font-weight:900; }
+    @media (max-width: 600px){
+      table{ font-size:12px; }
+      th, td{ padding:6px; }
+      th:first-child, td:first-child{ width:90px; }
+    }
+
+    .dropzone{
+      min-height:88px;
+      border:2px dashed #cbd5e1;
+      border-radius:12px;
+      background:#fbfdff;
+      display:flex; align-items:center; justify-content:center;
+      position:relative;
+      padding:6px;
+    }
+    .dropzone[data-filled="1"]{ border-style:solid; border-color:#94a3b8; background:#fff; }
+    .dropzone.dragover{ border-color:#0f172a; background:#eef2ff; }
+
+    .mini{ width:100%; display:grid; gap:6px; justify-items:center; }
+    .mini img{ width:92px; height:62px; object-fit:contain; display:block; }
+    .mini .cap{ font-size:12px; color:var(--muted); font-weight:900; }
+    @media (max-width: 600px){
+      .dropzone{ min-height:64px; padding:4px; }
+      .mini{ gap:4px; }
+      .mini img{ width:70px; height:48px; }
+      .mini .cap{ font-size:11px; }
+    }
+    .btnX{
+      position:absolute; top:6px; right:6px;
+      width:26px; height:26px; border-radius:10px;
+      border:1px solid var(--line);
+      background:#fff; cursor:pointer;
+      display:none;
+      font-weight:900;
+      line-height:1;
+    }
+    .dropzone[data-filled="1"] .btnX{ display:block; }
+
+    /* Banco */
+    .bankHeader{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .bankHeader .spacer{ flex:1; }
+    .status{ margin-left:auto; color:var(--muted); font-weight:900; }
+
+    button{
+      border:0; border-radius:12px; padding:10px 14px; cursor:pointer; font-weight:950;
+      background:#0f172a; color:#fff;
+    }
+    button:disabled{ opacity:.55; cursor:not-allowed; }
+    .hint{ font-size:12px; color:var(--muted); margin-top:6px; }
+
+    .bank{
+      margin-top:10px;
+      display:grid;
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      gap:10px;
+    }
+    @media (max-width: 900px){ .bank{ grid-template-columns: repeat(3, minmax(120px, 1fr)); } }
+    @media (max-width: 600px){ .bank{ grid-template-columns: repeat(2, minmax(110px, 1fr)); gap:8px; } }
+
+    .tile{
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#fff;
+      padding:10px;
+      cursor:grab;
+      user-select:none;
+      display:grid; gap:8px;
+      justify-items:center;
+    }
+    .tile:active{ cursor:grabbing; }
+    .tile.selected{
+      outline:2px solid #0f172a;
+      box-shadow:0 0 0 3px rgba(15,23,42,.08);
+    }
+    .tile img{ width:100%; height:70px; object-fit:contain; display:block; }
+    .tile .n{ font-weight:1000; font-size:14px; color:var(--muted); }
+    @media (max-width: 600px){
+      .tile{ padding:8px; border-radius:12px; }
+      .tile img{ height:60px; }
+      .tile .n{ font-size:13px; }
+    }
+
+    /* Overlay inicio */
+    .overlay{
+      position:fixed; inset:0; z-index:9999;
+      background:rgba(15,23,42,.75);
+      display:flex; align-items:center; justify-content:center;
+      padding:16px;
+    }
+    .overlayCard{
+      width:min(540px, 100%);
+      background:#fff;
+      border-radius:16px;
+      border:1px solid var(--line);
+      padding:16px;
+      box-shadow:0 20px 60px rgba(2,6,23,.35);
+    }
+    .overlayTitle{ font-weight:950; font-size:18px; margin-bottom:6px; }
+    .overlayDesc{ color:var(--muted); font-size:13px; line-height:1.35; margin-bottom:12px; }
+    .lab{ display:block; font-weight:900; font-size:12px; color:#334155; margin:10px 0 6px; }
+    .in, select{
+      width:100%; padding:12px 12px; border-radius:12px; border:1px solid #cbd5e1; font-size:16px; outline:none;
+    }
+    .warn{
+      margin-top:12px; padding:10px; border-radius:12px;
+      border:1px solid #fde68a; background:#fffbeb; color:#92400e;
+      font-weight:900; font-size:12px; line-height:1.35;
+    }
+    .err{ display:none; margin-top:10px; color:#dc2626; font-weight:900; font-size:13px; }
+  </style>
+</head>
+<body>
+
+  <!-- Overlay: captura matrícula + grupo -->
+  <div id="startOverlay" class="overlay">
+    <div class="overlayCard">
+      <div class="overlayTitle">Inicio de examen</div>
+      <div class="overlayDesc">
+        Ingresa tu matrícula y selecciona tu grupo. Estos datos no se podrán cambiar en esta sesión.
+      </div>
+
+      <label class="lab">Matrícula (solo números)</label>
+      <input id="matriculaInput" class="in" inputmode="numeric" autocomplete="off" placeholder="Ej. 213123" />
+
+      <label class="lab">Grupo</label>
+      <select id="grupoInput">
+        <option value="" selected disabled>Selecciona tu grupo…</option>
+        <option value="AUT02A">AUT02A</option>
+        <option value="AUT02B">AUT02B</option>
+        <option value="AUT02C">AUT02C</option>
+        <option value="AUT02D">AUT02D</option>
+      </select>
+
+      <div class="warn">
+        Aviso: confirma bien tu matrícula y grupo. Se abrirá un formulario prellenado al final.
+        Revisa y presiona <b>ENVIAR</b> dentro del formulario.
+      </div>
+
+      <div id="startErr" class="err"></div>
+
+      <div style="display:flex; gap:10px; margin-top:14px;">
+        <button id="btnStartExam" style="flex:1; padding:12px 14px;">Iniciar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <div class="card">
+      <h1>Parcial 2 – Vistas (Drag & Drop)</h1>
+      <p>Arrastra las vistas (1–18) desde abajo a la tabla. Las piezas se muestran arriba como referencia.</p>
+
+      <div class="piecesTop" id="piecesTop"></div>
+      <div class="hint">Carpeta requerida: <b>img/piezas/pieza1.png</b> ... <b>img/piezas/pieza6.png</b></div>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Vista \ Pieza</th>
+            <th>Pieza 1</th><th>Pieza 2</th><th>Pieza 3</th><th>Pieza 4</th><th>Pieza 5</th><th>Pieza 6</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>FRONTAL</b></td>
+            <td><div class="dropzone" data-r="0" data-c="0"><button class="btnX" title="Quitar">×</button></div></td>
+            <td><div class="dropzone" data-r="0" data-c="1"><button class="btnX" title="Quitar">×</button></div></td>
+            <td><div class="dropzone" data-r="0" data-c="2"><button class="btnX" title="Quitar">×</button></div></td>
+            <td><div class="dropzone" data-r="0" data-c="3"><button class="btnX" title="Quitar">×</button></div></td>
+            <td><div class="dropzone" data-r="0" data-c="4"><button class="btnX" title="Quitar">×</button></div></td>
+            <td><div class="dropzone" data-r="0" data-c="5"><button class="btnX" title="Quitar">×</button></div></td>
+          </tr>
+          <tr>
+            <td><b>SUPERIOR</b></td>
+            <td><div class="dropzone" data-r="1" data-c="0"><button class="btnX" title="Quitar">×</button></div></td>
+            <td><div class="dropzone" data-r="1" data-c="1"><button class="btnX" title="Quitar">×</button></div></td>
+            <td><div class="dropzone" data-r="1" data-c="2"><button class="btnX" title="Quitar">×</button></div></td>
+            <td><div class="dropzone" data-r="1" data-c="3"><button class="btnX" title="Quitar">×</button></div></td>
+            <td><div class="dropzone" data-r="1" data-c="4"><button class="btnX" title="Quitar">×</button></div></td>
+            <td><div class="dropzone" data-r="1" data-c="5"><button class="btnX" title="Quitar">×</button></div></td>
+          </tr>
+          <tr>
+            <td><b>LAT. IZQ</b></td>
+            <td><div class="dropzone" data-r="2" data-c="0"><button class="btnX" title="Quitar">×</button></div></td>
+            <td><div class="dropzone" data-r="2" data-c="1"><button class="btnX" title="Quitar">×</button></div></td>
+            <td><div class="dropzone" data-r="2" data-c="2"><button class="btnX" title="Quitar">×</button></div></td>
+            <td><div class="dropzone" data-r="2" data-c="3"><button class="btnX" title="Quitar">×</button></div></td>
+            <td><div class="dropzone" data-r="2" data-c="4"><button class="btnX" title="Quitar">×</button></div></td>
+            <td><div class="dropzone" data-r="2" data-c="5"><button class="btnX" title="Quitar">×</button></div></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="hint">Puedes quitar una vista de una celda con “×” y regresarla al banco.</div>
+    </div>
+
+    <div class="card">
+      <div class="bankHeader">
+        <div>
+          <b>Banco de vistas (1–18)</b>
+          <div class="hint">Se ordena aleatoriamente al abrir la actividad. En móvil: toca una vista y luego una celda.</div>
+        </div>
+        <div class="spacer"></div>
+        <div class="status" id="status">0/18 colocadas</div>
+        <button id="btnSend">Enviar a formulario</button>
+      </div>
+
+      <div class="bank" id="bank"></div>
+      <div class="hint">Carpeta requerida: <b>img/vistas/1.png</b> ... <b>img/vistas/18.png</b></div>
+    </div>
+
+  </div>
+
+  <script>
+    // =========================
+    // Microsoft Forms (TU ENLACE BASE + PARÁMETROS)
+    // =========================
+    const MS_FORM_BASE =
+      "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=5BWe6Tot7kuYlFa2LPI1-26gMm3arjFBgcbcUW-e5Y5UNDc4SjAzMkQ3TVJZSDJBTFY3T0RaRlpJNy4u";
+
+    // Keys (del link prellenado que compartiste)
+    const MS_KEY_MATRICULA = "rb035de7f5a104ea38689429904ee18af";
+    const MS_KEY_GRUPO     = "ref49b6d71f204bd29b20e0e34ba202a9";
+
+    // Q1..Q18 en orden (izq→der, arriba→abajo)
+    const MS_KEYS_Q = [
+      null,
+      "ra6fc075d24e9403dbc411e1a4c8d3cc1", // 1
+      "raad7c02d800945c3875b8b4e6c476998", // 2
+      "r5502a8f1f0064252829ab4482f69cd6d", // 3
+      "r6e86589a95974627ba2d32f542da2dfc", // 4
+      "rdc587a2f0f214f119a38a0f6b08a7e49", // 5
+      "r3063e4de48da4cdcb58108dfb54f31ca", // 6
+      "r1f72360c54b6476f8cd30a3cc8d47961", // 7
+      "r307b5ffc20fe484daf725c8e46432d4b", // 8
+      "rca5677710ee6438c97ec0925052ceacd", // 9
+      "r7bfcda2357ad4016b8411d541d9c6dab", // 10
+      "r795fd7df4fb1431ba6849fedbfb83964", // 11
+      "r2fb1847aefa3413db1e3cbfd4f3b3c20", // 12
+      "r372b4ec1e1c347c68065679d1aa5e517", // 13
+      "rfc2cb16185ed4e26be8b62f413d82af0", // 14
+      "r27db6cf9636b4263ae0afa76bf8720e7", // 15
+      "rfbbcb7911cfb4fda8d3113af9b128085", // 16
+      "r6b4bd6ff0929492dbd55297e42046446", // 17
+      "r762dc9027cd14c35b6f08fa9a79fac5d"  // 18
+    ];
+
+    // =========================
+    // CONFIG IMÁGENES
+    // =========================
+    const PIEZAS = [
+      { id: 1, src: "img/piezas/pieza1.png" },
+      { id: 2, src: "img/piezas/pieza2.png" },
+      { id: 3, src: "img/piezas/pieza3.png" },
+      { id: 4, src: "img/piezas/pieza4.png" },
+      { id: 5, src: "img/piezas/pieza5.png" },
+      { id: 6, src: "img/piezas/pieza6.png" },
+    ];
+
+    const VIEWS = Array.from({length:18}, (_,i)=> ({
+      id: String(i+1),
+      src: `img/vistas/${i+1}.png`,
+      label: `Vista ${i+1}`
+    }));
+
+    // =========================
+    // HELPERS
+    // =========================
+    function shuffle(arr){
+      const a = arr.slice();
+      for(let i=a.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [a[i],a[j]] = [a[j],a[i]];
+      }
+      return a;
+    }
+    function placedCount(){
+      return document.querySelectorAll(".dropzone[data-filled='1']").length;
+    }
+    function refreshStatus(){
+      const selected = selectedViewId ? ` • Seleccionada: #${selectedViewId}` : "";
+      document.getElementById("status").textContent = `${placedCount()}/18 colocadas${selected}`;
+    }
+
+    // =========================
+    // Estado examen
+    // =========================
+    let EXAM_LOCK = { matricula:null, grupo:null, started:false, sent:false };
+    let selectedViewId = null;
+
+    // Overlay refs
+    const overlay = document.getElementById("startOverlay");
+    const matriculaInput = document.getElementById("matriculaInput");
+    const grupoInput = document.getElementById("grupoInput");
+    const startErr = document.getElementById("startErr");
+    const btnStartExam = document.getElementById("btnStartExam");
+
+    // Solo números en matrícula
+    matriculaInput.addEventListener("input", () => {
+      matriculaInput.value = matriculaInput.value.replace(/[^\d]/g, "").slice(0, 12);
+    });
+
+    btnStartExam.addEventListener("click", () => {
+      const mat = (matriculaInput.value || "").trim();
+      const grp = (grupoInput.value || "").trim();
+
+      if (!mat) { startErr.style.display="block"; startErr.textContent="Ingresa tu matrícula."; return; }
+      if (!/^\d+$/.test(mat)) { startErr.style.display="block"; startErr.textContent="La matrícula debe contener solo números."; return; }
+      if (!grp) { startErr.style.display="block"; startErr.textContent="Selecciona tu grupo."; return; }
+
+      startErr.style.display="none";
+
+      const ok = confirm(`Confirma tus datos:\n\nMatrícula: ${mat}\nGrupo: ${grp}\n\n¿Son correctos?`);
+      if(!ok) return;
+
+      EXAM_LOCK.matricula = mat;
+      EXAM_LOCK.grupo = grp;
+      EXAM_LOCK.started = true;
+
+      overlay.style.display = "none";
+    });
+
+    // =========================
+    // Render piezas arriba
+    // =========================
+    const piecesTop = document.getElementById("piecesTop");
+    piecesTop.innerHTML = PIEZAS.map(p => `
+      <div class="pieceCard">
+        <img src="${p.src}" alt="Pieza ${p.id}" onerror="this.style.border='2px solid red'">
+        <div class="lbl">Pieza ${p.id}</div>
+      </div>
+    `).join("");
+
+    // =========================
+    // Render banco abajo
+    // =========================
+    const bank = document.getElementById("bank");
+
+    function renderBank(order){
+      bank.innerHTML = "";
+      for(const v of order){
+        const tile = document.createElement("div");
+        tile.className = "tile";
+        tile.draggable = true;
+        tile.dataset.viewId = v.id;
+        tile.innerHTML = `
+          <div class="n">${v.id}</div>
+          <img src="${v.src}" alt="${v.label}">
+        `;
+        tile.addEventListener("dragstart", (e)=>{
+          e.dataTransfer.setData("text/plain", v.id);
+          e.dataTransfer.effectAllowed = "move";
+        });
+        tile.addEventListener("click", ()=>{
+          if(EXAM_LOCK.sent) return;
+          if(selectedViewId === v.id){
+            setSelected(null);
+          }else{
+            setSelected(v.id);
+          }
+        });
+        bank.appendChild(tile);
+      }
+    }
+
+    // =========================
+    // Dropzones
+    // =========================
+    const cellState = {}; // {"0-0":"7", ...}
+    const zones = Array.from(document.querySelectorAll(".dropzone"));
+
+    function setSelected(viewId){
+      selectedViewId = viewId;
+      const tiles = bank.querySelectorAll(".tile");
+      tiles.forEach(t=>{
+        t.classList.toggle("selected", t.dataset.viewId === viewId);
+      });
+      refreshStatus();
+    }
+
+    function placeViewInZone(viewId, zone){
+      if(!viewId) return;
+
+      // Si ya se envió, no permitir cambios
+      if(EXAM_LOCK.sent){
+        alert("Ya se abrió el formulario para envío. No se permiten cambios.");
+        return;
+      }
+
+      // Si la celda ya tiene algo, lo regresamos
+      if(zone.dataset.filled === "1") clearZone(zone);
+
+      // Evitar duplicados
+      if(Object.values(cellState).includes(viewId)){
+        alert(`La vista ${viewId} ya está colocada en otra casilla.`);
+        return;
+      }
+
+      const v = VIEWS.find(x=>x.id===viewId);
+      if(!v) return;
+
+      // Quita del banco
+      const tile = bank.querySelector(`.tile[data-view-id="${CSS.escape(viewId)}"]`);
+      if(tile) tile.remove();
+
+      // Coloca mini en celda
+      const mini = document.createElement("div");
+      mini.className = "mini";
+      mini.innerHTML = `<img src="${v.src}" alt="${v.label}"><div class="cap">#${v.id}</div>`;
+      zone.appendChild(mini);
+
+      const key = `${zone.dataset.r}-${zone.dataset.c}`;
+      cellState[key] = viewId;
+      zone.dataset.filled = "1";
+      refreshStatus();
+
+      // Limpia selección si era el mismo
+      if(selectedViewId === viewId) setSelected(null);
+    }
+
+    function clearZone(zone){
+      const key = `${zone.dataset.r}-${zone.dataset.c}`;
+      const viewId = cellState[key];
+      if(!viewId) return;
+
+      // Regresa al banco al inicio
+      const v = VIEWS.find(x=>x.id===viewId);
+      if(v){
+        const tile = document.createElement("div");
+        tile.className = "tile";
+        tile.draggable = true;
+        tile.dataset.viewId = v.id;
+        tile.innerHTML = `<div class="n">${v.id}</div><img src="${v.src}" alt="${v.label}">`;
+        tile.addEventListener("dragstart", (e)=>{
+          e.dataTransfer.setData("text/plain", v.id);
+          e.dataTransfer.effectAllowed = "move";
+        });
+        tile.addEventListener("click", ()=>{
+          if(EXAM_LOCK.sent) return;
+          if(selectedViewId === v.id){
+            setSelected(null);
+          }else{
+            setSelected(v.id);
+          }
+        });
+        if(selectedViewId === v.id){
+          tile.classList.add("selected");
+        }
+        bank.prepend(tile);
+      }
+
+      delete cellState[key];
+      zone.dataset.filled = "0";
+      zone.querySelectorAll(".mini").forEach(x=>x.remove());
+      refreshStatus();
+    }
+
+    zones.forEach(zone=>{
+      zone.dataset.filled = "0";
+
+      zone.addEventListener("dragover", (e)=>{
+        e.preventDefault();
+        zone.classList.add("dragover");
+        e.dataTransfer.dropEffect = "move";
+      });
+
+      zone.addEventListener("dragleave", ()=>{
+        zone.classList.remove("dragover");
+      });
+
+      zone.addEventListener("drop", (e)=>{
+        e.preventDefault();
+        zone.classList.remove("dragover");
+
+        const viewId = e.dataTransfer.getData("text/plain");
+        placeViewInZone(viewId, zone);
+      });
+
+      // Tap-to-place en móvil
+      zone.addEventListener("click", ()=>{
+        if(!selectedViewId) return;
+        placeViewInZone(selectedViewId, zone);
+      });
+
+      // Quitar con X
+      zone.querySelector(".btnX").addEventListener("click", (e)=>{
+        e.stopPropagation();
+        if(EXAM_LOCK.sent){
+          alert("Ya se abrió el formulario para envío. No se permiten cambios.");
+          return;
+        }
+        clearZone(zone);
+      });
+    });
+
+    // =========================
+    // Enviar a Microsoft Forms (prefill)
+    // =========================
+    const btnSend = document.getElementById("btnSend");
+
+    btnSend.addEventListener("click", () => {
+      if(!EXAM_LOCK.started || !EXAM_LOCK.matricula || !EXAM_LOCK.grupo){
+        alert("Primero inicia el examen con matrícula y grupo.");
+        return;
+      }
+      if(EXAM_LOCK.sent) return;
+
+      // Validar 18 colocadas
+      const missing = [];
+      for(let r=0;r<3;r++){
+        for(let c=0;c<6;c++){
+          if(!cellState[`${r}-${c}`]) missing.push(`${r}-${c}`);
+        }
+      }
+      if(missing.length){
+        alert(`Faltan ${missing.length} casillas por completar.`);
+        return;
+      }
+
+      // Confirmación 1: datos
+      const ok1 = confirm(`Vas a abrir el formulario con:\n\nMatrícula: ${EXAM_LOCK.matricula}\nGrupo: ${EXAM_LOCK.grupo}\n\n¿Continuar?`);
+      if(!ok1) return;
+
+      // Confirmación 2: envío
+      const ok2 = confirm(
+        "Confirmar envío:\n\n" +
+        "Se abrirá Microsoft Forms prellenado.\n" +
+        "Revisa y presiona ENVIAR dentro del formulario.\n\n" +
+        "¿Abrir formulario ahora?"
+      );
+      if(!ok2) return;
+
+      // Construir URL prellenada
+      const params = new URLSearchParams();
+      params.set(MS_KEY_MATRICULA, EXAM_LOCK.matricula);
+
+      // En tu enlace el grupo va con comillas (\"AUT02A\"). Replicamos el formato.
+      params.set(MS_KEY_GRUPO, `"${EXAM_LOCK.grupo}"`);
+
+      // Q1..Q18 en orden izq→der, arriba→abajo
+      let idx = 1;
+      for(let r=0;r<3;r++){
+        for(let c=0;c<6;c++){
+          const key = `${r}-${c}`;
+          params.set(MS_KEYS_Q[idx], cellState[key]); // "1".."18"
+          idx++;
+        }
+      }
+
+      const url = `${MS_FORM_BASE}&${params.toString()}`;
+
+      // Bloqueo local: no permitir volver a abrir con otra matrícula en esta sesión
+      EXAM_LOCK.sent = true;
+      btnSend.disabled = true;
+
+      // Abrir Forms
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
+
+    // INIT
+    renderBank(shuffle(VIEWS));
+    refreshStatus();
+  </script>
+</body>
+</html>
